@@ -13,3 +13,8 @@ requirements.txt
 .vscode
 docs
 references
+venv/
+blueprint.md
+blueprint_vi.md
+
+data/extracted/
