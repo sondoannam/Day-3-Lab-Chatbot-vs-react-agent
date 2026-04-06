@@ -1,7 +1,7 @@
 # Individual Report: Lab 3 - Chatbot vs ReAct Agent
 
-- **Student Name**: [Your Name Here]
-- **Student ID**: [Your ID Here]
+- **Student Name**: []
+- **Student ID**: []
 - **Date**: [Date Here]
 
 ---

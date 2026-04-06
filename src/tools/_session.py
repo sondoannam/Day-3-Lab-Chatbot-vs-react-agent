@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from src.schemas import CandidateMasterCV, JobDescription, MatchReport
+from src.schemas import CandidateMasterCV, JobDescription, MatchReport, TailoredCV, TailoredSection
 
 
 @dataclass
@@ -14,7 +14,8 @@ class CVSession:
     cv_data: Optional[CandidateMasterCV] = None
     jd_data: Optional[JobDescription] = None
     match_report: Optional[MatchReport] = None
-    tailored_sections: dict[str, str] = field(default_factory=dict)
+    tailored_sections: dict[str, TailoredSection] = field(default_factory=dict)
+    tailored_cv: Optional[TailoredCV] = None
 
     def set_cv_data(self, payload: CandidateMasterCV | dict | None) -> Optional[CandidateMasterCV]:
         if payload is None:
@@ -39,12 +40,14 @@ class CVSession:
     def clear_generated_state(self) -> None:
         self.match_report = None
         self.tailored_sections.clear()
+        self.tailored_cv = None
 
     def reset(self) -> None:
         self.cv_data = None
         self.jd_data = None
         self.match_report = None
         self.tailored_sections.clear()
+        self.tailored_cv = None
 
 
 session = CVSession()

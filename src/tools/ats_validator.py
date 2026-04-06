@@ -17,9 +17,18 @@ def validate_ats(args: str) -> str:
 
     text = args.strip()
     if not text:
-        # Fallback: assemble from tailored sections in session
-        if session.tailored_sections:
-            text = "\n\n".join(session.tailored_sections.values())
+        if session.tailored_cv:
+            blocks = []
+            for section in session.tailored_cv.sections:
+                blocks.append(section.title)
+                blocks.extend(block.text for block in section.blocks)
+            text = "\n\n".join(blocks)
+        elif session.tailored_sections:
+            blocks = []
+            for section in session.tailored_sections.values():
+                blocks.append(section.title)
+                blocks.extend(block.text for block in section.blocks)
+            text = "\n\n".join(blocks)
         else:
             return "ERROR: No CV text to validate. Provide text or call draft_section first."
 

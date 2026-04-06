@@ -1,4 +1,3 @@
-import os
 import re
 from typing import List, Dict, Any, Optional
 
@@ -30,19 +29,24 @@ class ReActAgent:
         tool_descriptions = "\n".join(
             [f"- {t['name']}: {t['description']}" for t in self.tools]
         )
-        return f"""
-        You are an intelligent assistant. You have access to the following tools:
-        {tool_descriptions}
+        return f"""You are a CV tailoring assistant with access to tools. You MUST use tools to complete any task — never answer from memory or make up content.
 
-        Use the following format strictly:
-        Thought: your line of reasoning.
-        Action: tool_name(argument)
-        Observation: result of the tool call.
-        ... (repeat Thought/Action/Observation if needed)
-        Final Answer: your final response.
+AVAILABLE TOOLS:
+{tool_descriptions}
 
-        Only call one tool at a time. Do not make up tool names.
-        """
+STRICT FORMAT — follow exactly on every response:
+Thought: <your reasoning about what to do next>
+Action: <tool_name>(<argument>)
+
+Wait for the Observation before continuing.
+After receiving Observations from ALL required tools, you may write:
+Final Answer: <your response based only on tool Observations>
+
+RULES:
+- You MUST call extract_cv and extract_jd before draft_section or validate_ats.
+- NEVER write Final Answer before calling all required tools.
+- NEVER invent company names, dates, or skills not seen in Observations.
+- One Action per response, then stop and wait."""
 
     def _parse_thought(self, text: str) -> Optional[str]:
         match = re.search(r"Thought:\s*(.+?)(?=\nAction:|\nFinal Answer:|$)", text, re.DOTALL)

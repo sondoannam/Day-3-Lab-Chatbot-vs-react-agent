@@ -1,51 +1,51 @@
-# Individual Report: Lab 3 - Chatbot vs ReAct Agent
+# Báo cáo cá nhân: Bài thực hành 3 - Chatbot vs ReAct Agent
 
-- **Student Name**: [Your Name Here]
-- **Student ID**: [Your ID Here]
-- **Date**: [Date Here]
-
----
-
-## I. Technical Contribution (15 Points)
-
-*Describe your specific contribution to the codebase (e.g., implemented a specific tool, fixed the parser, etc.).*
-
-- **Modules Implementated**: [e.g., `src/tools/search_tool.py`]
-- **Code Highlights**: [Copy snippets or link file lines]
-- **Documentation**: [Brief explanation of how your code interacts with the ReAct loop]
+- **Họ và tên sinh viên**: [Tên của bạn ở đây]
+- **Mã số sinh viên**: [Mã số của bạn ở đây]
+- **Ngày tháng**: [Ngày tháng ở đây]
 
 ---
 
-## II. Debugging Case Study (10 Points)
+## I. Đóng góp kỹ thuật (15 Điểm)
 
-*Analyze a specific failure event you encountered during the lab using the logging system.*
+*Mô tả đóng góp cụ thể của bạn vào mã nguồn (ví dụ: triển khai một công cụ cụ thể, sửa lỗi bộ phân tích cú pháp, v.v.).*
 
-- **Problem Description**: [e.g., Agent caught in an infinite loop with `Action: search(None)`]
-- **Log Source**: [Link or snippet from `logs/YYYY-MM-DD.log`]
-- **Diagnosis**: [Why did the LLM do this? Was it the prompt, the model, or the tool spec?]
-- **Solution**: [How did you fix it? (e.g., updated `Thought` examples in the system prompt)]
-
----
-
-## III. Personal Insights: Chatbot vs ReAct (10 Points)
-
-*Reflect on the reasoning capability difference.*
-
-1.  **Reasoning**: How did the `Thought` block help the agent compared to a direct Chatbot answer?
-2.  **Reliability**: In which cases did the Agent actually perform *worse* than the Chatbot?
-3.  **Observation**: How did the environment feedback (observations) influence the next steps?
+- **Các module đã triển khai**: [ví dụ: `src/tools/search_tool.py`]
+- **Điểm nổi bật của mã nguồn**: [Sao chép các đoạn mã hoặc liên kết số dòng]
+- **Tài liệu**: [Giải thích ngắn gọn cách mã của bạn tương tác với vòng lặp ReAct]
 
 ---
 
-## IV. Future Improvements (5 Points)
+## II. Nghiên cứu tình huống gỡ lỗi (10 Điểm)
 
-*How would you scale this for a production-level AI agent system?*
+*Phân tích một sự cố lỗi cụ thể mà bạn gặp phải trong quá trình thực hành bằng hệ thống ghi lỗi (logging system).*
 
-- **Scalability**: [e.g., Use an asynchronous queue for tool calls]
-- **Safety**: [e.g., Implement a 'Supervisor' LLM to audit the agent's actions]
-- **Performance**: [e.g., Vector DB for tool retrieval in a many-tool system]
+- **Mô tả vấn đề**: [ví dụ: Agent bị kẹt trong vòng lặp vô hạn với `Action: search(None)`]
+- **Nguồn log**: [Liên kết hoặc đoạn trích từ `logs/YYYY-MM-DD.log`]
+- **Chẩn đoán**: [Tại sao LLM lại làm điều này? Do prompt, mô hình hay định nghĩa công cụ?]
+- **Giải pháp**: [Bạn đã sửa nó như thế nào? (ví dụ: cập nhật các ví dụ `Thought` trong system prompt)]
+
+---
+
+## III. Góc nhìn cá nhân: Chatbot vs ReAct (10 Điểm)
+
+*Suy ngẫm về sự khác biệt trong khả năng suy luận.*
+
+1.  **Suy luận**: Khối `Thought` (Suy nghĩ) đã giúp agent như thế nào so với một câu trả lời trực tiếp từ Chatbot?
+2.  **Độ tin cậy**: Trong những trường hợp nào Agent thực sự hoạt động *kém hơn* Chatbot?
+3.  **Quan sát**: Phản hồi từ môi trường (những quan sát - observations) đã ảnh hưởng đến các bước tiếp theo như thế nào?
+
+---
+
+## IV. Cải tiến trong tương lai (5 Điểm)
+
+*Bạn sẽ mở rộng quy mô hệ thống này như thế nào cho một hệ thống AI agent cấp độ sản xuất?*
+
+- **Khả năng mở rộng**: [ví dụ: Sử dụng hàng đợi bất đồng bộ cho các lệnh gọi công cụ]
+- **Tính an toàn**: [ví dụ: Triển khai một LLM 'Giám sát' để kiểm tra các hành động của agent]
+- **Hiệu suất**: [ví dụ: Vector DB để truy xuất công cụ trong hệ thống có nhiều công cụ]
 
 ---
 
 > [!NOTE]
-> Submit this report by renaming it to `REPORT_[YOUR_NAME].md` and placing it in this folder.
+> Nộp báo cáo này bằng cách đổi tên thành `REPORT_[TÊN_CỦA_BẠN].md` và đặt vào thư mục này.
