@@ -6,6 +6,10 @@ import json
 from typing import Dict, Optional, Literal
 from pydantic import BaseModel, HttpUrl
 
+import instructor
+from openai import AsyncOpenAI
+from src.schemas.cv_tailoring import JobDescription, SourceType, ExtractionMetadata
+
 try:
     from crawl4ai import AsyncWebCrawler
     from crawl4ai.async_configs import CrawlerRunConfig
@@ -28,6 +32,7 @@ class JDScraperOutput(BaseModel):
     execution_time_ms: int
     raw_markdown: str
     meta_data: JDMetaData
+    structured_jd: Optional[JobDescription] = None
 
 class JD_Web_Scraper:
     def __init__(self):
@@ -70,6 +75,11 @@ class JD_Web_Scraper:
                     company=fallback_result.get("company", "Unknown")
                 )
 
+        # Xử lý nội dung markdown thô qua ChatGPT lấy ra cấu trúc của JD
+        structured_jd = None
+        if raw_markdown:
+            structured_jd = await self._extract_structured_jd(raw_markdown, url)
+
         # Ensure execution time stays under SLA (10 seconds)
         execution_time_ms = int((time.time() - start_time) * 1000)
 
@@ -79,7 +89,8 @@ class JD_Web_Scraper:
             source_engine=source_engine,
             execution_time_ms=execution_time_ms,
             raw_markdown=raw_markdown,
-            meta_data=meta_data
+            meta_data=meta_data,
+            structured_jd=structured_jd
         )
 
         return json.dumps(output.model_dump(), ensure_ascii=False)
@@ -88,13 +99,13 @@ class JD_Web_Scraper:
         """
         Uses Bright Data Web Unlocker API via standard proxy requests.
         Includes User-Agent rotation implicitly handled by the unlocker.
+        If no proxy provided, will attempt direct fetch (may be blocked).
         """
-        if not self.bright_data_proxy:
-            return None
-
-        proxies = {
-            "http": self.bright_data_proxy,
-            "https": self.bright_data_proxy
+        proxies = None
+        if self.bright_data_proxy:
+            proxies = {
+                "http": self.bright_data_proxy,
+                "https": self.bright_data_proxy
             }
         
         headers = {
@@ -186,3 +197,41 @@ class JD_Web_Scraper:
         company = lines[1].replace("#", "").strip() if len(lines) > 1 else "Unknown"
         
         return JDMetaData(job_title=title, company=company)
+
+    async def _extract_structured_jd(self, text: str, url: str) -> Optional[JobDescription]:
+        """
+        Sử dụng thư viện Instructor và AsyncOpenAI để parse nội dung markdown sang JobDescription.
+        """
+        try:
+            openai_api_key = os.getenv("OPENAI_API_KEY")
+            openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
+
+            if openrouter_api_key and (not openai_api_key or openai_api_key == "your_openai_api_key_here"):
+                llm_client = AsyncOpenAI(
+                    base_url="https://openrouter.ai/api/v1",
+                    api_key=openrouter_api_key,
+                )
+                model_name = "openai/gpt-4o"
+            else:
+                llm_client = AsyncOpenAI()
+                model_name = "gpt-4o"
+
+            client = instructor.from_openai(llm_client)
+            structured_data = await client.chat.completions.create(
+                model=model_name,
+                response_model=JobDescription,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Extract JD details. Format dates as ISO strings. Ensure every requirement has an evidence quote."
+                    },
+                    {"role": "user", "content": text}
+                ],
+                max_retries=3
+            )
+            structured_data.metadata.source_type = SourceType.URL
+            structured_data.metadata.source_uri = url
+            return structured_data
+        except Exception as e:
+            print(f"Error extracting structured JD from LLM: {e}")
+            return None
