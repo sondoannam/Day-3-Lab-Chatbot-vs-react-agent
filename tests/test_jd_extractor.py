@@ -1,58 +1,65 @@
 import os
-import json
 import sys
-
-# Thêm thư mục gốc vào sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from src.tools.jd_extractor import extract_jd_requirements
-# ... các code còn lại
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from dotenv import load_dotenv
+
+# Thêm path để nhận diện module src
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from src.tools.jd_extractor import extract_jd_requirements
 
-# 1. Load các biến môi trường (API Key)
 load_dotenv()
 
 def run_test():
-    # 2. Cấu hình đường dẫn file PDF test
-    # Bạn hãy thay bằng đường dẫn file thực tế trong máy bạn
+    # Đường dẫn file PDF test của bạn
     pdf_path = "data/jds/jd_recruitment_officer_final.pdf" 
     
     if not os.path.exists(pdf_path):
         print(f"❌ Lỗi: Không tìm thấy file tại {pdf_path}")
-        print("Vui lòng kiểm tra lại đường dẫn hoặc để file PDF vào đúng thư mục.")
         return
 
-    print(f"🚀 Đang bắt đầu test trích xuất từ: {pdf_path}")
-    print("-" * 50)
+    print(f"🚀 Đang bắt đầu test với Schema mới...")
 
     try:
-        # 3. Gọi tool trích xuất
-        # Hàm này bên trong đã dùng pdfplumber và Instructor
+        # Gọi tool trích xuất
         result = extract_jd_requirements(pdf_path)
 
-        # 4. Hiển thị kết quả trích xuất dưới dạng JSON đẹp
         print("\n✅ TRÍCH XUẤT THÀNH CÔNG!")
         print("=" * 50)
         
-        # model_dump_json() là hàm của Pydantic để chuyển object sang string JSON
-        print(result.model_dump_json(indent=4))
+        # 1. Kiểm tra thông tin chung (Lưu ý: dùng .title thay vì .job_title)
+        print(f"🔍 Thông tin chung:")
+        print(f" - Vị trí: {result.title}") # Schema mới dùng 'title'
+        print(f" - Công ty: {result.company_name}")
+        print(f" - Hình thức: {result.work_arrangement}") # Trả về Enum (Remote/Hybrid...)
         
-        print("=" * 50)
-        
-        # 5. Kiểm tra thử logic truy cập dữ liệu
-        print(f"\n🔍 Kiểm tra nhanh:")
-        print(f" - Vị trí: {result.job_title}")
-        print(f" - Số lượng kỹ năng kỹ thuật: {len(result.technical_skills)}")
-        
-        if result.technical_skills:
-            top_skill = result.technical_skills[0]
-            print(f" - Kỹ năng tiêu biểu: {top_skill.skill_name} (Level: {top_skill.level})")
+        # 2. Kiểm tra Requirements (Kỹ năng)
+        print(f"\n🛠️ Danh sách Yêu cầu (Requirements):")
+        for req in result.requirements[:5]: # Lấy 5 cái đầu tiên
+            # req.category sẽ trả về Enum (hard_skill, soft_skill...)
+            # req.priority sẽ trả về Enum (must, should...)
+            print(f" - [{req.category.upper()}] {req.text}")
+            print(f"   + Độ ưu tiên: {req.priority}")
+            if req.min_years_experience:
+                print(f"   + Kinh nghiệm: {req.min_years_experience} năm")
+            
+            # Kiểm tra Evidence (Bằng chứng trích dẫn)
+            if req.evidence:
+                print(f"   + Bằng chứng: \"{req.evidence[0].quote}\"")
+
+        # 3. Kiểm tra Responsibilities (Trách nhiệm)
+        print(f"\n📝 Trách nhiệm chính:")
+        for resp in result.responsibilities[:3]:
+            print(f" - {resp.text}")
+
+        # 4. Xuất toàn bộ JSON ra file để kiểm tra kỹ hơn
+        with open("test_output.json", "w", encoding="utf-8") as f:
+            f.write(result.model_dump_json(indent=4))
+        print("\n💾 Đã lưu kết quả chi tiết vào file 'test_output.json'")
 
     except Exception as e:
         print(f"❌ Quá trình test thất bại với lỗi:")
-        print(str(e))
+        import traceback
+        traceback.print_exc() # In chi tiết lỗi để dễ debug
 
 if __name__ == "__main__":
     run_test()
