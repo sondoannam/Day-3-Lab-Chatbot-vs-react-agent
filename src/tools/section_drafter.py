@@ -1,15 +1,41 @@
-"""
-section_drafter.py — Tool 4
-Rewrite một section của CV để nhắm vào JD keywords.
-Dùng session.cv_data (CandidateMasterCV) + session.jd_data (JDExtraction).
+"""Draft core CV sections using the canonical CV and JD schemas."""
 
-Agent gọi: Action: draft_section(summary)
-           Action: draft_section(experience)
-           Action: draft_section(skills)
-"""
+from src.schemas import JobDescription, RequirementPriority
 from src.telemetry.logger import logger
 
 _VALID = {"summary", "experience", "skills"}
+
+
+def _target_keywords(jd: JobDescription) -> list[str]:
+    keywords: list[str] = []
+
+    for requirement in jd.requirements:
+        value = (requirement.normalized_value or requirement.text).strip()
+        if not value:
+            continue
+        if requirement.priority == RequirementPriority.MUST or requirement.required:
+            keywords.append(value)
+
+    keywords.extend(jd.target_keywords)
+
+    deduped: list[str] = []
+    seen = set()
+    for keyword in keywords:
+        normalized = keyword.lower()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped.append(keyword)
+
+    return deduped
+
+
+def _jd_tone(jd: JobDescription) -> str:
+    if jd.summary:
+        return jd.summary[:160]
+    if jd.company_industry:
+        return f"Target role in {jd.company_industry} with title {jd.title}."
+    return f"Target role: {jd.title}."
 
 
 def draft_section(args: str) -> str:
@@ -28,31 +54,32 @@ def draft_section(args: str) -> str:
     jd = session.jd_data
     cv = session.cv_data
 
-    keywords = [s.skill_name for s in jd.technical_skills] + [s.skill_name for s in jd.soft_skills]
+    keywords = _target_keywords(jd)
     keywords_str = ", ".join(keywords[:14])
 
-    # ── Build source data from CandidateMasterCV ──────────────
     if section == "experience":
         entries = []
-        for exp in cv.get("work_experience", []):
-            bullets = "\n".join(f"- {b['text']}" for b in exp.get("bullets", []))
-            entries.append(f"{exp['job_title']} @ {exp['company_name']} ({exp.get('start_date',{}).get('raw','?')} – {exp.get('end_date',{}).get('raw','Present')})\n{bullets}")
+        for exp in cv.work_experience:
+            start = exp.start_date.raw if exp.start_date else "?"
+            end = exp.end_date.raw if exp.end_date else ("Present" if exp.is_current else "Present")
+            bullets = "\n".join(f"- {bullet.text}" for bullet in exp.bullets)
+            entries.append(f"{exp.job_title} @ {exp.company_name} ({start} – {end})\n{bullets}")
         source = "\n\n".join(entries) or "No work experience found."
         section_label = "Work Experience"
 
     elif section == "summary":
-        name = cv.get("contact", {}).get("full_name", "Candidate")
-        skills = [s["name"] for s in cv.get("skills", [])][:10]
-        recent = cv.get("work_experience", [{}])[0]
+        name = cv.contact.full_name
+        skills = [skill.name for skill in cv.skills][:10]
+        recent = cv.work_experience[0] if cv.work_experience else None
         source = (
             f"Name: {name}\n"
             f"Skills: {', '.join(skills)}\n"
-            f"Most recent: {recent.get('job_title','')} @ {recent.get('company_name','')}"
+            f"Most recent: {(recent.job_title + ' @ ' + recent.company_name) if recent else ''}"
         )
         section_label = "Professional Summary"
 
     else:  # skills
-        skills = [s["name"] for s in cv.get("skills", [])]
+        skills = [skill.name for skill in cv.skills]
         source = "Verified skills: " + ", ".join(skills)
         section_label = "Core Competencies"
 
@@ -64,7 +91,7 @@ def draft_section(args: str) -> str:
         f"Rules:\n"
         f"- Use STAR method for experience bullets (Action + measurable Result).\n"
         f"- Do NOT invent experiences or metrics not in the source data.\n"
-        f"- Tone: {jd.summary_requirements[:120]}\n"
+        f"- Tone: {_jd_tone(jd)}\n"
         f"- Return only the rewritten section text, no explanation."
     )
 

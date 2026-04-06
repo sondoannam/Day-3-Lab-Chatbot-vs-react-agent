@@ -1,12 +1,8 @@
-"""
-ats_validator.py — Tool 5
-Local, deterministic ATS scoring. Không dùng LLM.
-Dùng session.jd_data (JDExtraction) để lấy required keywords.
+"""Local deterministic ATS scoring against the canonical JobDescription schema."""
 
-Agent gọi: Action: validate_ats(<tailored cv text>)
-is_ready=True → agent dừng loop → Final Answer.
-"""
 import re
+
+from src.schemas import RequirementPriority
 from src.telemetry.logger import logger
 
 _REQUIRED_SECTIONS = ["experience", "education", "skills"]
@@ -33,15 +29,20 @@ def validate_ats(args: str) -> str:
     jd = session.jd_data
     cv_lower = text.lower()
 
-    # All required keywords from JDExtraction
-    all_kw = (
-        [s.skill_name for s in jd.technical_skills if s.is_mandatory] +
-        [s.skill_name for s in jd.soft_skills if s.is_mandatory]
-    )
-    nice_kw = (
-        [s.skill_name for s in jd.technical_skills if not s.is_mandatory] +
-        [s.skill_name for s in jd.soft_skills if not s.is_mandatory]
-    )
+    all_kw = []
+    nice_kw = []
+    for requirement in jd.requirements:
+        keyword = (requirement.normalized_value or requirement.text).strip()
+        if not keyword:
+            continue
+        if requirement.required or requirement.priority == RequirementPriority.MUST:
+            all_kw.append(keyword)
+        else:
+            nice_kw.append(keyword)
+
+    for keyword in jd.target_keywords:
+        if keyword not in all_kw and keyword not in nice_kw:
+            nice_kw.append(keyword)
 
     matched  = [kw for kw in all_kw if kw.lower() in cv_lower]
     missing  = [kw for kw in all_kw if kw.lower() not in cv_lower]

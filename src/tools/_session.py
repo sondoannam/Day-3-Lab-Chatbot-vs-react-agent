@@ -1,15 +1,50 @@
-"""
-Shared session state cho CV tailoring agent.
-Dùng CandidateMasterCV (từ cv_extractor) và JDExtraction (từ jd_extractor).
-"""
-from typing import Any, Dict, Optional
+"""Shared session state for the active CV tailoring pipeline."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any, Optional
+
+from src.schemas import CandidateMasterCV, JobDescription, MatchReport
 
 
+@dataclass
 class CVSession:
-    llm: Any = None                          # LLMProvider instance
-    cv_data: Optional[Dict] = None           # CandidateMasterCV dict từ extract_cv
-    jd_data: Any = None                      # JDExtraction object từ extract_jd_requirements
-    tailored_sections: Dict[str, str] = {}   # section → drafted text
+    llm: Any = None
+    cv_data: Optional[CandidateMasterCV] = None
+    jd_data: Optional[JobDescription] = None
+    match_report: Optional[MatchReport] = None
+    tailored_sections: dict[str, str] = field(default_factory=dict)
+
+    def set_cv_data(self, payload: CandidateMasterCV | dict | None) -> Optional[CandidateMasterCV]:
+        if payload is None:
+            self.cv_data = None
+            return None
+        if isinstance(payload, CandidateMasterCV):
+            self.cv_data = payload
+        else:
+            self.cv_data = CandidateMasterCV.model_validate(payload)
+        return self.cv_data
+
+    def set_jd_data(self, payload: JobDescription | dict | None) -> Optional[JobDescription]:
+        if payload is None:
+            self.jd_data = None
+            return None
+        if isinstance(payload, JobDescription):
+            self.jd_data = payload
+        else:
+            self.jd_data = JobDescription.model_validate(payload)
+        return self.jd_data
+
+    def clear_generated_state(self) -> None:
+        self.match_report = None
+        self.tailored_sections.clear()
+
+    def reset(self) -> None:
+        self.cv_data = None
+        self.jd_data = None
+        self.match_report = None
+        self.tailored_sections.clear()
 
 
 session = CVSession()

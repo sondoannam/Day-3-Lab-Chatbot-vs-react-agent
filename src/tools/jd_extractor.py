@@ -173,3 +173,82 @@ def extract_jd_requirements(pdf_path: str) -> JobDescription:
     raise RuntimeError(
         "All JD extraction providers failed. " + " | ".join(provider_errors)
     )
+
+
+def extract_jd_text_requirements(raw_text: str) -> JobDescription:
+    attempts = _provider_attempts()
+    if not attempts:
+        raise RuntimeError(
+            "No JD extraction provider is configured. Set OPENROUTER_API_KEY or OPENAI_API_KEY."
+        )
+
+    provider_errors: List[str] = []
+
+    for provider_name, model_name, client_factory in attempts:
+        try:
+            structured_data = _extract_with_provider(
+                provider_name=provider_name,
+                model_name=model_name,
+                client_factory=client_factory,
+                raw_text=raw_text,
+            )
+            structured_data.metadata.source_name = "inline_jd"
+            structured_data.metadata.source_type = SourceType.TEXT
+            structured_data.metadata.extractor_name = f"{provider_name}_jd_extractor"
+            structured_data.metadata.extractor_version = model_name
+
+            if provider_errors:
+                structured_data.metadata.warnings.append(
+                    "Fallback used after provider failure(s): " + " | ".join(provider_errors)
+                )
+
+            return structured_data
+        except Exception as error:
+            provider_errors.append(f"{provider_name}: {error}")
+
+    raise RuntimeError(
+        "All JD extraction providers failed. " + " | ".join(provider_errors)
+    )
+
+
+def _summarize_jd(jd: JobDescription) -> str:
+    must_requirements = [req.normalized_value or req.text for req in jd.requirements if req.required][:8]
+    nice_to_have = [req.normalized_value or req.text for req in jd.requirements if not req.required][:5]
+
+    lines = [
+        f"Job: {jd.title}" + (f" @ {jd.company_name}" if jd.company_name else ""),
+        f"Required keywords: {', '.join(must_requirements) if must_requirements else 'N/A'}",
+    ]
+    if nice_to_have:
+        lines.append(f"Nice-to-have: {', '.join(nice_to_have)}")
+    if jd.summary:
+        lines.append(f"Summary: {jd.summary}")
+    return "\n".join(lines)
+
+
+def extract_jd(args: str) -> str:
+    from src.tools._session import session
+
+    value = args.strip()
+    if not value:
+        return "ERROR: Missing JD input. Provide a file path or raw JD text."
+
+    if os.path.exists(value):
+        structured = extract_jd_requirements(value)
+    else:
+        structured = extract_jd_text_requirements(value)
+
+    session.set_jd_data(structured)
+    session.clear_generated_state()
+    return _summarize_jd(structured)
+
+
+jd_extractor_tool = {
+    "name": "extract_jd",
+    "description": (
+        "Extracts structured requirements from a Job Description into the canonical JobDescription schema. "
+        "Input: a JD PDF path or raw JD text. "
+        "Output: concise summary of title, keywords, and job overview."
+    ),
+    "function": extract_jd,
+}
