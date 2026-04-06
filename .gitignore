@@ -4,3 +4,12 @@ __pycache__/
 *.log
 .DS_Store
 models/
+
+requirements.txt
+.agent
+.claude
+.pytest_cache
+.venv
+.vscode
+docs
+references
