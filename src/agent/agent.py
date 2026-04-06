@@ -1,5 +1,8 @@
 import re
 from typing import List, Dict, Any, Optional
+
+from pydantic import BaseModel
+
 from src.core.llm_provider import LLMProvider
 from src.telemetry.logger import logger
 
@@ -14,6 +17,13 @@ class ReActAgent:
         self.tools = tools
         self.max_steps = max_steps
         self.history = []
+
+        try:
+            from src.tools._session import session
+
+            session.llm = llm
+        except ImportError:
+            pass
 
     def get_system_prompt(self) -> str:
         tool_descriptions = "\n".join(
@@ -126,14 +136,17 @@ RULES:
                 try:
                     result = tool["function"](args)
 
+                    if isinstance(result, BaseModel):
+                        return result.model_dump_json(indent=2)
+
                     if isinstance(result, dict):
                         if result.get("error"):
                             return f"Error: {result['error']}"
 
-                        # CandidateMasterCV dict — store in session, return summary
                         try:
                             from src.tools._session import session
-                            session.cv_data = result
+
+                            session.set_cv_data(result)
                         except ImportError:
                             pass
 

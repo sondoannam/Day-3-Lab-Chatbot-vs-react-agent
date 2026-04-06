@@ -18,14 +18,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
-from src.schemas.cv_tailoring import (
+from src.schemas import (
     CandidateMasterCV,
     EvidenceQuote,
     ExtractionMetadata,
     JobDescription,
     MatchReport,
-    MatchType,
-    RequirementMatch,
     SourceType,
     TailoredCV,
     TailoredSection,
@@ -42,6 +40,10 @@ def _new_id(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex[:8]}"
 
 
+def _category_value(value) -> str:
+    return value if isinstance(value, str) else value.value
+
+
 def _priority_req_ids(jd: JobDescription, match_report: MatchReport | None, section: str) -> List[str]:
     """Return requirement IDs most relevant to the section."""
     if section == "skills":
@@ -56,14 +58,14 @@ def _priority_req_ids(jd: JobDescription, match_report: MatchReport | None, sect
     matched_ids: List[str] = []
     if match_report:
         for rm in match_report.matched_requirements:
-            if rm.requirement_id in [r.requirement_id for r in jd.requirements if r.category.value in cats]:
+            if rm.requirement_id in [r.requirement_id for r in jd.requirements if _category_value(r.category) in cats]:
                 if not rm.matched:
                     gap_ids.append(rm.requirement_id)
                 else:
                     matched_ids.append(rm.requirement_id)
 
     # Fall back to all reqs in category if match_report not available
-    all_ids = [r.requirement_id for r in jd.requirements if r.category.value in cats]
+    all_ids = [r.requirement_id for r in jd.requirements if _category_value(r.category) in cats]
     ordered = gap_ids + matched_ids + [i for i in all_ids if i not in gap_ids and i not in matched_ids]
     return ordered[:10]
 
@@ -76,7 +78,7 @@ def _keywords_for_section(jd: JobDescription, section: str) -> str:
     else:
         cats = {"hard_skill", "tool", "experience", "soft_skill", "domain"}
 
-    kws = [r.text for r in jd.requirements if r.category.value in cats]
+    kws = [r.text for r in jd.requirements if _category_value(r.category) in cats]
     kws += jd.target_keywords or []
     return ", ".join(dict.fromkeys(kws[:16]))
 
@@ -118,7 +120,7 @@ def _draft_summary(cv: CandidateMasterCV, jd: JobDescription, llm) -> tuple[str,
 def _draft_skills(cv: CandidateMasterCV, jd: JobDescription, match_report: MatchReport | None, llm) -> tuple[str, List[EvidenceQuote]]:
     skill_names = [s.name for s in cv.skills]
     missing_kws: List[str] = match_report.missing_keywords if match_report else []
-    jd_tools = [r.text for r in jd.requirements if r.category.value in {"hard_skill", "tool"}]
+    jd_tools = [r.text for r in jd.requirements if _category_value(r.category) in {"hard_skill", "tool"}]
 
     source = (
         f"Verified candidate skills: {', '.join(skill_names)}\n"
