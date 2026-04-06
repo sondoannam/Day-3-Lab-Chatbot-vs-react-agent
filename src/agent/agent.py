@@ -111,20 +111,29 @@ class ReActAgent:
     def _execute_tool(self, tool_name: str, args: str) -> str:
         """
         Finds the tool by name and calls its function with args.
-        Each tool function receives a single string argument
-        (the agent formats it that way via Action: tool_name(arg)).
+        Each tool function receives a single string argument.
+
+        For complex dict results (e.g. CandidateMasterCV from extract_cv):
+        - Store full data in session.cv_data
+        - Return a concise human-readable summary to the LLM
         """
         for tool in self.tools:
             if tool["name"] == tool_name:
                 try:
                     result = tool["function"](args)
 
-                    # If the tool returns a dict (like extract_cv does),
-                    # surface the error or return the content
                     if isinstance(result, dict):
                         if result.get("error"):
                             return f"Error: {result['error']}"
-                        return result.get("content") or str(result)
+
+                        # CandidateMasterCV dict — store in session, return summary
+                        try:
+                            from src.tools._session import session
+                            session.cv_data = result
+                        except ImportError:
+                            pass
+
+                        return self._summarize_cv_dict(result)
 
                     return str(result)
 
@@ -133,3 +142,24 @@ class ReActAgent:
                     return f"Tool '{tool_name}' raised an error: {e}"
 
         return f"Tool '{tool_name}' not found."
+
+    @staticmethod
+    def _summarize_cv_dict(cv: dict) -> str:
+        """Return a short observation the LLM can reason about."""
+        contact = cv.get("contact", {})
+        name    = contact.get("full_name", "Unknown")
+        skills  = [s["name"] for s in cv.get("skills", [])][:8]
+        exps    = cv.get("work_experience", [])
+        roles   = [f"{e['job_title']} @ {e['company_name']}" for e in exps]
+        edu     = [e.get("institution", "") for e in cv.get("education", [])]
+        warns   = [w for w in cv.get("metadata", {}).get("warnings", []) if "page" not in w]
+
+        lines = [
+            f"CV extracted: {name}",
+            f"Skills ({len(cv.get('skills', []))} total): {', '.join(skills)}" + ("..." if len(cv.get("skills", [])) > 8 else ""),
+            f"Work history ({len(exps)} roles): {';'.join(roles)}",
+            f"Education: {';'.join(edu) or 'N/A'}",
+        ]
+        if warns:
+            lines.append(f"Warnings: {';'.join(warns)}")
+        return "\n".join(lines)
